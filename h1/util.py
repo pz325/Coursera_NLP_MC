@@ -71,11 +71,11 @@ def rare_words_rule_p3(word):
     w = RARE_TAG
     if is_numeric(word):
         w = NUMERIC_TAG
-    else:
-        if is_last_uppercase(word):
-            w = LAST_UPPERCASE_TAG
-        if is_all_uppercase(word):
-            w = ALL_UPPERCASE_TAG
+    # else:
+    if is_all_uppercase(word):
+        w = ALL_UPPERCASE_TAG
+    if is_last_uppercase(word):
+        w = LAST_UPPERCASE_TAG
     return w
 
 

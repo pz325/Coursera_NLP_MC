@@ -21,6 +21,7 @@ p2.py
     Part 2
 p3.py
     Part 3
+    not as good as required: Your F1-Score is 35.009 and the goal F1-Score is 39.519.
 util.py
     Helper methods including
         * handling rare word (applying different rules)
