@@ -13,11 +13,15 @@ hmm.py
         * rare_word, 
         * all tags 
         * all words
-
-p1.py
     SimpleTagger does simple tagging as instructed by Part 1
-
+    ViterbiTagger does Viterbi tagging as instructed by Part 2    
+p1.py
+    Part 1
+p2.py
+    Part 2
+p3.py
+    Part 3
 util.py
-    Helper method including
+    Helper methods including
         * handling rare word (applying different rules)
-        * corpus iterator
+        * test data iterator
