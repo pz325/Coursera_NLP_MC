@@ -5,3 +5,19 @@ H1: Hidden Markov Models
 ----
 Instruction refer to h1/h1.pdf
 
+hmm.py
+    Hmm_ex, extending Hmm, calculates and stores:
+        * e(x|y), 
+        * q(y_i|y_i-1, y_i-2)
+        * count(x), 
+        * rare_word, 
+        * all tags 
+        * all words
+
+p1.py
+    SimpleTagger does simple tagging as instructed by Part 1
+
+util.py
+    Helper method including
+        * handling rare word (applying different rules)
+        * corpus iterator
