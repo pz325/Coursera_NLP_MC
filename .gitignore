@@ -1,2 +1,16 @@
 /h1/*.output
 /h1/*.pyc
+/h1/p1.gene.train
+/h1/p1.model
+/h1/p2.gene.train
+/h1/p2.model
+/h1/p3.gene.train
+/h1/p3.model
+/h1/gene.counts
+/h1/gene.dev.part
+/h1/gene_dev.p1.output
+/h1/gene_dev.p2.output
+/h1/gene_dev.p3.output
+/h1/gene_test.p1.output
+/h1/gene_test.p2.output
+/h1/gene_test.p3.output
