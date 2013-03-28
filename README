@@ -26,3 +26,9 @@ util.py
     Helper methods including
         * handling rare word (applying different rules)
         * test data iterator
+
+----
+
+H2: Probabilistic Context-Free Grammar (PCFG)
+----
+Instruction refer to h2/h2.pdf
