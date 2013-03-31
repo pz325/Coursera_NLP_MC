@@ -14,3 +14,5 @@
 /h1/gene_test.p1.output
 /h1/gene_test.p2.output
 /h1/gene_test.p3.output
+/h2/*.pyc
+/h2/*.out
