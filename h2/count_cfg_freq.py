@@ -9,7 +9,7 @@ import sys, json
 Count rule frequencies in a binarized CFG.
 """
 
-class Counts:
+class Counts(object):
   def __init__(self):
     self.unary = {}
     self.binary = {}
