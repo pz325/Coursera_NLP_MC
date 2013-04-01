@@ -160,10 +160,13 @@ class CKYTagger(PCFG):
         log('Sentence to process: {sent}'.format(sent=' '.join(words)))
         log('n = {n}, len(N) = {ln}'.format(n=n, ln=len(N)))
 
-        # narrow down set for X
-        SET_X = set()
+        # reduce X, Y and Z searching space
+        SET_X = defaultdict()
         for (X, Y, Z) in self.binary.keys():
-            SET_X.add(X)
+            if X in SET_X:
+                SET_X[X].append((Y, Z))
+            else:
+                SET_X[X] = []
 
         # init
         for i in xrange(1, n+1):
@@ -184,42 +187,40 @@ class CKYTagger(PCFG):
                 j = i + l
                 # log('==== word {i} to {j} ===='.format(i=i, j=j))
 
-                for X in SET_X:
-                    tmp, max_pi = 0.0, 0.0
+                for X, YZPairs in SET_X.iteritems():
+                    tmp, max_pi = 0.0, -1.0
                     max_Y, max_Z, max_s = '', '', 0
-
+                    find_max = False
                     for s in xrange(i, j):
-                        # log('split ({i}, {s}) / ({sa1}, {j})'.format(i=i, s=s, sa1=s+1, j=j))
-
-                        # find SET_Y and SET_Z
-                        SET_Y = set()
-                        SET_Z = set()
-                        for Y in N:
-                            if (i, s, Y) in pi and pi[(i, s, Y)] != 0:
-                                SET_Y.add(Y)
-                        for Z in N:
-                            if (s+1, j, Z) in pi and pi[(s+1, j, Z)] != 0:
-                                SET_Z.add(Z)
-                        for Y in SET_Y:
-                            for Z in SET_Z:
-                                # if (X, Y, Z) in self.binary.keys()  \
-                                #     and self.q_x_y1y2[(X, Y, Z)] != 0:
+                        for (Y, Z) in YZPairs:
+                            if ((i, s, Y) in pi and pi[(i, s, Y)] != 0)  \
+                                and ((s+1, j, Z) in pi and pi[(s+1, j, Z)] != 0):
                                 tmp = Decimal(self.q_x_y1y2[(X, Y, Z)]) \
                                     * pi[(i, s, Y)]  \
                                     * pi[(s+1, j, Z)]
                                 # log('prob={tmp}, q(({X}, {Y}, {Z}))={q}, pi({i}, {s}, {Y})={pi1}, pi({sa1}, {j}, {Z})={pi2}'.format(tmp=tmp, X=X, Y=Y, Z=Z, q=self.q_x_y1y2[(X, Y, Z)], i=i, s=s, sa1=s+1, j=j, pi1=pi[(i, s, Y)], pi2=pi[(s+1, j, Z)]))
                                 if tmp > max_pi:
+                                    find_max = True
                                     max_pi = tmp
                                     max_Y, max_Z, max_s = Y, Z, s
-                    pi[(i, j, X)] = max_pi
-                    bp[(i, j, X)] = (max_Y, max_Z, max_s)
-                    # if pi[(i, j, X)] != 0:
-                    #     log('pi({i}, {j}, {X})={pi}, argmax rule = ({X}, {Y}, {Z}), argmax split = {s}'.format(i=i, j=j, X=X, pi=pi[(i, j, X)], Y=max_Y, Z=max_Z, s=max_s))
-                    #     log('')
+                    if find_max:
+                        pi[(i, j, X)] = max_pi
+                        bp[(i, j, X)] = (max_Y, max_Z, max_s)
+                        # log('pi({i}, {j}, {X})={pi}, argmax rule = ({X}, {Y}, {Z}), argmax split = {s}'.format(i=i, j=j, X=X, pi=pi[(i, j, X)], Y=max_Y, Z=max_Z, s=max_s))
+                        # log(bp[(i, j, X)])
 
         # log('==== traceback ====')
-        result = self.traceback(pi, bp, sentence, 1, n, ROOT)
-        log(json.dumps(result))
+        if (1, n, ROOT) not in bp:
+            max_pi = 0.0
+            max_X = ''
+            for X, YZPairs in SET_X.iteritems():
+                if (1, n, X) in pi and pi[(1, n, X)] > max_pi:
+                    max_pi = pi[(1, n, X)]
+                    max_X = X
+        else:
+            max_X = ROOT
+        result = self.traceback(pi, bp, sentence, 1, n, max_X)
+        # log(json.dumps(result))
         return result
 
     def traceback(self, pi, bp, sentence, i, j, X):
@@ -273,24 +274,19 @@ def tag(test_data_filename, result_filename, pcfg_model_filename):
 def main():
     TRAIN = False
     train_data_filename = 'parse_train.dat'
-    train_rare_filename = 'p1.train.rare.dat'
-    pcfg_model_filename = 'p1.model'
+    train_rare_filename = 'p2.train.rare.dat'
+    pcfg_model_filename = 'p3.model'
     # train_rare_count_filename = 'parser_train.counts.out'
 
-    test_data_filename = 'parse_dev.dat'
+    test_data_filename = 'parse_test.dat'
     # test_data_filename = 'one_sent_test.dat'
-    result_filename = 'p2.result'
+    result_filename = 'p3.result'
 
     if TRAIN:
         tagger = train(train_data_filename, train_rare_filename, pcfg_model_filename, rare_words_rule_p1)
         tagger.write(open(pcfg_model_filename, 'w'))
 
     tag(test_data_filename, result_filename, pcfg_model_filename)
-
-    # for l in open(train_data_filename):
-    #     t = json.loads(l)
-    #     print t
-    #     break
 
 if __name__ == '__main__':
     main()
