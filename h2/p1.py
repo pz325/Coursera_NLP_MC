@@ -2,13 +2,17 @@
 import json
 from count_cfg_freq import Counts
 from collections import defaultdict
+from decimal import Decimal
+
 
 __author__ = 'ping.zou'
 __date__ = '30 Mar 2013'
 
 
+DEBUG = True
 RARE_TAG = '_RARE_'
 RARE_WORD_THRESHOLD = 5
+ROOT = 'SBARQ'
 
 
 def rare_words_rule_p1(word):
@@ -37,6 +41,11 @@ def replace(tree, rare_words, processer):
             tree[1] = processer(tree[1])
 
 
+def log(msg):
+    if DEBUG:
+        print msg
+
+
 class PCFG(Counts):
     """
     Store counts, and model params
@@ -60,7 +69,6 @@ class PCFG(Counts):
         for word, count in self.word.iteritems():
             if count < RARE_WORD_THRESHOLD:
                 self.rare_words.append(word)
-
 
     def cal_rule_params(self):
         # q(X->Y1Y2) = Count(X->Y1Y2) / Count(X)
@@ -127,44 +135,162 @@ class PCFG(Counts):
 class CKYTagger(PCFG):
     def __init__(self):
         super(CKYTagger, self).__init__()
+        self.rare_words_rule = rare_words_rule_p1
 
     def tag(self, input, output):
         for line in input:
-            result = CKY(line)
-            output.write(result)
+            result = self.CKY(line)
+            output.write(json.dumps(result))
             output.write('\n')
+            pass
 
     def CKY(self, sentence):
-        return sentence
+        pi = defaultdict()
+        bp = defaultdict()
+        N = self.nonterm.keys()
+
+        words = sentence.strip().split(' ')
+        n = len(words)
+
+        # process rare word
+        for i in xrange(0, n):
+            if words[i] not in self.word.keys():
+                words[i] = self.rare_words_rule(words[i])
+
+        log('Sentence to process: {sent}'.format(sent=' '.join(words)))
+        log('n = {n}, len(N) = {ln}'.format(n=n, ln=len(N)))
+
+        # narrow down set for X
+        SET_X = set()
+        for (X, Y, Z) in self.binary.keys():
+            SET_X.add(X)
+
+        # init
+        for i in xrange(1, n+1):
+            w = words[i-1]
+            # log('==== init pi for word {i}: "{w}" ===='.format(i=i, w=w))
+            for X in N:
+                if (X, w) in self.unary.keys():
+                    pi[(i, i, X)] = Decimal(self.q_x_w[(X, w)])
+                else:
+                    pi[(i, i, X)] = Decimal(0.0)
+                # if pi[(i, i, X)] != 0:
+                    # log('pi({i}, {i}, {X})={pi}, rule=({X}, {w})'.format(i=i, X=X, w=w, pi=pi[(i, i, X)]))
+            # log('')
+
+        # dp
+        for l in xrange(1, n):
+            for i in xrange(1, n-l+1):
+                j = i + l
+                # log('==== word {i} to {j} ===='.format(i=i, j=j))
+
+                for X in SET_X:
+                    tmp, max_pi = 0.0, 0.0
+                    max_Y, max_Z, max_s = '', '', 0
+
+                    for s in xrange(i, j):
+                        # log('split ({i}, {s}) / ({sa1}, {j})'.format(i=i, s=s, sa1=s+1, j=j))
+
+                        # find SET_Y and SET_Z
+                        SET_Y = set()
+                        SET_Z = set()
+                        for Y in N:
+                            if (i, s, Y) in pi and pi[(i, s, Y)] != 0:
+                                SET_Y.add(Y)
+                        for Z in N:
+                            if (s+1, j, Z) in pi and pi[(s+1, j, Z)] != 0:
+                                SET_Z.add(Z)
+                        for Y in SET_Y:
+                            for Z in SET_Z:
+                                # if (X, Y, Z) in self.binary.keys()  \
+                                #     and self.q_x_y1y2[(X, Y, Z)] != 0:
+                                tmp = Decimal(self.q_x_y1y2[(X, Y, Z)]) \
+                                    * pi[(i, s, Y)]  \
+                                    * pi[(s+1, j, Z)]
+                                # log('prob={tmp}, q(({X}, {Y}, {Z}))={q}, pi({i}, {s}, {Y})={pi1}, pi({sa1}, {j}, {Z})={pi2}'.format(tmp=tmp, X=X, Y=Y, Z=Z, q=self.q_x_y1y2[(X, Y, Z)], i=i, s=s, sa1=s+1, j=j, pi1=pi[(i, s, Y)], pi2=pi[(s+1, j, Z)]))
+                                if tmp > max_pi:
+                                    max_pi = tmp
+                                    max_Y, max_Z, max_s = Y, Z, s
+                    pi[(i, j, X)] = max_pi
+                    bp[(i, j, X)] = (max_Y, max_Z, max_s)
+                    # if pi[(i, j, X)] != 0:
+                    #     log('pi({i}, {j}, {X})={pi}, argmax rule = ({X}, {Y}, {Z}), argmax split = {s}'.format(i=i, j=j, X=X, pi=pi[(i, j, X)], Y=max_Y, Z=max_Z, s=max_s))
+                    #     log('')
+
+        # log('==== traceback ====')
+        result = self.traceback(pi, bp, sentence, 1, n, ROOT)
+        log(json.dumps(result))
+        return result
+
+    def traceback(self, pi, bp, sentence, i, j, X):
+        words = sentence.strip().split(' ')
+        tree = []
+        tree.append(X)
+        if i == j:
+            tree.append(words[i-1])
+        else:
+            Y1, Y2, s = bp[(i, j, X)]
+            # print Y1, Y2, s
+            tree.append(self.traceback(pi, bp, sentence, i, s, Y1))
+            tree.append(self.traceback(pi, bp, sentence, s+1, j, Y2))
+        return tree
 
 
-def main():
-    train_data_filename = 'parse_train.dat'
-    train_rare_filename = 'p1.train.rare.dat'
-    train_rare_count_filename = 'parser_train.counts.out'
-
-    # count
+def train(train_data_filename, train_rare_filename, pcfg_model_filename, rare_words_rule):
+    print 'train PCFG model'
     pcfg = PCFG()
     for l in open(train_data_filename):
         t = json.loads(l)
         pcfg.count(t)
-
-    # process rare words
     pcfg.count_word()
+
+    print 'process rare word'
     process_rare_words(open(train_data_filename),
         open(train_rare_filename, 'w'),
         pcfg.rare_words,
-        rare_words_rule_p1)
+        rare_words_rule)
 
-    # count again
+    print 'train PCFG model again'
     new_pcfg = PCFG()
     for l in open(train_rare_filename):
         t = json.loads(l)
         new_pcfg.count(t)
-    new_pcfg.write(open(train_rare_count_filename, 'w'))
-
     new_pcfg.cal_rule_params()
-    new_pcfg.write_params(open('param.out', 'w'))
+
+    new_pcfg.write(open(pcfg_model_filename, 'w'))
+    return new_pcfg
+
+
+def tag(test_data_filename, result_filename, pcfg_model_filename):
+    print 'load PCFG model'
+    tagger = CKYTagger()
+    tagger.read(open(pcfg_model_filename))
+    # tagger.write_params(open('param', 'w'))
+    tagger.tag(open(test_data_filename), open(result_filename, 'w'))
+    pass
+
+
+def main():
+    TRAIN = False
+    train_data_filename = 'parse_train.dat'
+    train_rare_filename = 'p1.train.rare.dat'
+    pcfg_model_filename = 'p1.model'
+    # train_rare_count_filename = 'parser_train.counts.out'
+
+    test_data_filename = 'parse_dev.dat'
+    # test_data_filename = 'one_sent_test.dat'
+    result_filename = 'p2.result'
+
+    if TRAIN:
+        tagger = train(train_data_filename, train_rare_filename, pcfg_model_filename, rare_words_rule_p1)
+        tagger.write(open(pcfg_model_filename, 'w'))
+
+    tag(test_data_filename, result_filename, pcfg_model_filename)
+
+    # for l in open(train_data_filename):
+    #     t = json.loads(l)
+    #     print t
+    #     break
 
 if __name__ == '__main__':
     main()
