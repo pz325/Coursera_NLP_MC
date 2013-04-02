@@ -16,3 +16,5 @@
 /h1/gene_test.p3.output
 /h2/*.pyc
 /h2/*.out
+/h2/*.result
+/h2/*.model
