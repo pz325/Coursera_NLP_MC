@@ -32,3 +32,19 @@ util.py
 H2: Probabilistic Context-Free Grammar (PCFG)
 ----
 Instruction refer to h2/h2.pdf
+
+pcfg.py
+    PCFG, extending Count, calculate and store
+        * q(X->Y1Y2)
+        * q(X->w)
+    CKYTagger implements CKY algorithm
+p1.py
+    Part 1
+p2.py
+    Part 2
+    Expected development total F1-Scores are 0.79 for part 2 and 0.83 for part 3. 
+p3.py
+    Part 3
+
+----
+
