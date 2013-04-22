@@ -47,4 +47,19 @@ p3.py
     Part 3
 
 ----
+H3: IBM Model 1 & 2
+----
+Instruction refer to h3/h3.pdf
 
+ibmmodel.py
+    Count
+        * t(f|e)
+    IBMModel1, implements EM and align algorithm
+
+
+p1.py
+    Part 1
+
+The expected development F-Scores are 0.420, 0.449, and a basic intersection alignment should give 0.485 for the last part.
+
+----
